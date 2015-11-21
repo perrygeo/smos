@@ -1,0 +1,7 @@
+downloads
+output
+raw
+smos-ee-to-netcdf
+secrets.sh
+*.swp
+*.pyc

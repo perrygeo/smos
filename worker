@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+set -e
+
+YEAR=2015
+MONTH=11
+DAY=$1
+if [ ! $DAY ]; then
+    echo "DAY"
+    exit 1
+fi
+DATE="$YEAR$MONTH$DAY"
+TYPE=SM  # SM or OS
+
+USER=$SMOS_USERNAME
+PASS=$SMOS_PASSWORD
+ZIPDIR=./downloads/${TYPE}_$DATE
+RAWDIR=./raw/${TYPE}_$DATE
+OUTDIR=./output
+CONVERT=./smos-ee-to-netcdf/smos-ee-to-nc.sh
+
+SHP=$OUTDIR/${TYPE}_${DATE}.shp
+TIFF=$OUTDIR/${TYPE}_${DATE}.tif
+
+filename=$(basename "$SHP")
+extension="${filename##*.}"
+layername="${filename%.*}"
+
+
+if [ ! -e $ZIPDIR ]; then
+    echo "Downloading $YEAR/$MONTH/$DAY"
+    mkdir -p $ZIPDIR
+    cd $ZIPDIR
+    wget -nd -r ftp://$USER:$PASS@smos-ds.eo.esa.int/SMOS/L2${TYPE}/MIR_${TYPE}UDP2/$YEAR/$MONTH/$DAY/*
+    cd -
+else
+    echo "Skipping Download"
+fi
+
+if [ ! -e $RAWDIR ]; then
+    mkdir -p $RAWDIR
+    for zip in $ZIPDIR/*.zip; do
+        $CONVERT --target-directory $RAWDIR $zip
+    done
+else
+    echo "Skipping conversion to netcdf"
+fi
+
+if [ ! -e $SHP ]; then
+    mkdir -p $OUTDIR
+    python nc-to-geojson.py $RAWDIR $SHP $TYPE
+    shptree $SHP
+else
+    echo "Skipping conversion to shp"
+fi
+
+if [ ! -e $TIFF ]; then
+    # GDAL_NUM_THREADS=2
+
+    # Note you must invert ymin and ymax to get a proper transform!
+    # Source ~ 0.16 degrees apart
+    # 1440 720 = cellsize 0.25 deg, radius of 0.1767767 to cover single cell
+    cellsize=1.0
+    outwidth=$(echo "360 / $cellsize" | bc)
+    outheight=$(echo "180 / $cellsize" | bc)
+    radius=$(echo "$cellsize * 2 * 0.70710678" | bc)
+
+    gdal_grid \
+        -txe -180 180 -tye 90 -90 -outsize $outwidth $outheight \
+        -a "invdist:radius1=$radius:radius2=$radius:min_points=1:nodata=0.0" \
+        -of GTiff -l $layername -zfield soil_moist \
+        $SHP $TIFF
+    rio edit-info --nodata 0 $TIFF
+fi
