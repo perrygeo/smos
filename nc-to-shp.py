@@ -15,8 +15,12 @@ def convert(target, outshp, kind):
         longs = sm.variables['Longitude'][:]
         if kind == 'SM':
             datas = sm.variables['Soil_Moisture'][:]
+            propname = "soil_moisture"
         elif kind == 'OS':
             datas = sm.variables['SSS3'][:]
+            propname = "salinity"
+        else:
+            raise ValueError("kind must be SM or OS")
 
         for data in zip(lats, longs, datas):
             lat, lon, val = [np.asscalar(x) for x in data]
@@ -38,7 +42,7 @@ def convert(target, outshp, kind):
             schema={
                 'geometry': 'Point',
                 'properties': {
-                    'soil_moist': 'float'}}
+                    propname: 'float'}}
             ) as dest:
 
         for (lon, lat), moist in pts.items():
@@ -49,7 +53,7 @@ def convert(target, outshp, kind):
                 'type': "Feature",
                 'geometry': geom,
                 'properties': {
-                    'soil_moist': moist}}
+                    propname: moist}}
             dest.write(feature)
 
 

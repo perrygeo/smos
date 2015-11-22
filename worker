@@ -60,7 +60,7 @@ if [ ! -e $TIFF ]; then
     # Note you must invert ymin and ymax to get a proper transform!
     # Source ~ 0.16 degrees apart
     # 1440 720 = cellsize 0.25 deg, radius of 0.1767767 to cover single cell
-    cellsize=1.0
+    cellsize=0.25
     outwidth=$(echo "360 / $cellsize" | bc)
     outheight=$(echo "180 / $cellsize" | bc)
     radius=$(echo "$cellsize * 2 * 0.70710678" | bc)
