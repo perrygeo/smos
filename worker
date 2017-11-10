@@ -48,7 +48,7 @@ fi
 
 if [ ! -e $SHP ]; then
     mkdir -p $OUTDIR
-    python nc-to-geojson.py $RAWDIR $SHP $TYPE
+    python nc-to-shp.py $RAWDIR $SHP $TYPE
     shptree $SHP
 else
     echo "Skipping conversion to shp"
